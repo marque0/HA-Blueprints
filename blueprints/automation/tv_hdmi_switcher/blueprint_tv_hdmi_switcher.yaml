@@ -1,0 +1,159 @@
+blueprint:
+  name: "TV HDMI Switcher mit Handy-Benachrichtigung"
+  description: >
+    Sendet eine interaktive Benachrichtigung aufs Handy, sobald der Fernseher
+    eingeschaltet wird. Tippe direkt in der Notification auf HDMI 1–4.
+
+    Benötigt: Home Assistant Companion App auf dem Handy!
+  domain: automation
+  input:
+    tv_entity:
+      name: "Fernseher (Media Player)"
+      description: "Dein Matter-TV oder Media Player"
+      selector:
+        entity:
+          domain: media_player
+
+    notify_target:
+      name: "Handy für Benachrichtigung"
+      description: "Wähle dein Handy aus (z.B. notify.mobile_app_iphone_marc)"
+      selector:
+        entity:
+          domain: notify
+
+    notification_titel:
+      name: "Notification-Titel"
+      default: "📺 Fernseher ist an"
+      selector:
+        text: {}
+
+    notification_text:
+      name: "Notification-Text"
+      default: "Auf welchen HDMI-Eingang wechseln?"
+      selector:
+        text: {}
+
+    hdmi_1:
+      name: "HDMI 1 – Button-Text"
+      default: "HDMI 1"
+      selector:
+        text: {}
+
+    hdmi_2:
+      name: "HDMI 2 – Button-Text"
+      default: "HDMI 2"
+      selector:
+        text: {}
+
+    hdmi_3:
+      name: "HDMI 3 – Button-Text"
+      default: "HDMI 3"
+      selector:
+        text: {}
+
+    hdmi_4:
+      name: "HDMI 4 – Button-Text"
+      description: "Leer lassen = Button wird nicht angezeigt"
+      default: "HDMI 4"
+      selector:
+        text: {}
+
+    confirm_switch:
+      name: "Bestätigungs-Notification senden"
+      description: "Zweite Notification nach dem Wechsel?"
+      default: true
+      selector:
+        boolean: {}
+
+trigger:
+  - id: tv_an
+    platform: state
+    entity_id: !input tv_entity
+    from: "off"
+
+  - id: hdmi_action
+    platform: event
+    event_type: mobile_app_notification_action
+
+variables:
+  tv: !input tv_entity
+  notify: !input notify_target
+  hdmi1: !input hdmi_1
+  hdmi2: !input hdmi_2
+  hdmi3: !input hdmi_3
+  hdmi4: !input hdmi_4
+
+  actions_list: >
+    {% set buttons = [] %}
+    {% if hdmi1 is not none and hdmi1 != '' %}
+      {% set buttons = buttons + [{'action': 'tv_hdmi_1', 'title': hdmi1}] %}
+    {% endif %}
+    {% if hdmi2 is not none and hdmi2 != '' %}
+      {% set buttons = buttons + [{'action': 'tv_hdmi_2', 'title': hdmi2}] %}
+    {% endif %}
+    {% if hdmi3 is not none and hdmi3 != '' %}
+      {% set buttons = buttons + [{'action': 'tv_hdmi_3', 'title': hdmi3}] %}
+    {% endif %}
+    {% if hdmi4 is not none and hdmi4 != '' %}
+      {% set buttons = buttons + [{'action': 'tv_hdmi_4', 'title': hdmi4}] %}
+    {% endif %}
+    {{ buttons }}
+
+action:
+  - choose:
+      # ═══════════════════════════════════════════════════════════
+      # FALL A: TV wurde eingeschaltet → Notification senden
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: tv_an
+
+        sequence:
+          - service: "{{ notify }}"
+            data:
+              message: !input notification_text
+              title: !input notification_titel
+              data:
+                actions: "{{ actions_list }}"
+                tag: "tv_hdmi_switcher"
+
+      # ═══════════════════════════════════════════════════════════
+      # FALL B: HDMI-Button in Notification gedrückt
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: hdmi_action
+          - condition: template
+            value_template: "{{ trigger.event.data.action | default('') | string | startswith('tv_hdmi_') }}"
+
+        sequence:
+          - variables:
+              hdmi_num: "{{ trigger.event.data.action.split('_') | last }}"
+              source_name: >
+                {% set n = hdmi_num | int %}
+                {% if n == 1 %}{{ hdmi1 }}
+                {% elif n == 2 %}{{ hdmi2 }}
+                {% elif n == 3 %}{{ hdmi3 }}
+                {% elif n == 4 %}{{ hdmi4 }}
+                {% else %}HDMI {{ n }}{% endif %}
+
+          - service: media_player.select_source
+            target:
+              entity_id: "{{ tv }}"
+            data:
+              source: "{{ source_name }}"
+
+          - if:
+              - condition: template
+                value_template: "{{ confirm_switch }}"
+            then:
+              - service: "{{ notify }}"
+                data:
+                  message: "✅ Auf {{ source_name }} gewechselt!"
+                  title: "TV Quelle"
+                  data:
+                    tag: "tv_hdmi_switcher"
+                    actions: []
+
+mode: queued
+max: 5
