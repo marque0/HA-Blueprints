@@ -1,0 +1,244 @@
+blueprint:
+  name: "James Wecker Pro - Licht, Sound-Loop & Bewegungsmelder"
+  description: >
+    Wecker-Automation mit sanftem Licht-Aufdimmen, Sound-Loop auf Google Nest Audio
+    (Pause-Taste startet nächsten Track), und Stopp per Flur-Bewegungsmelder.
+
+    BENÖTIGTE HELFER (vorher anlegen):
+      - input_boolean.wecker_aktiv   (Ein/Aus-Schalter)
+      - input_boolean.wecker_phase   (Phase-Flag, wird automatisch gesteuert)
+      - input_number.wecker_track    (Track-Zähler 0-10, wird automatisch gesteuert)
+
+    SOUNDS: Lege MP3s unter www/sounds/ ab (z.B. wecker1.mp3).
+    Im Blueprint dann: /local/sounds/wecker1.mp3
+  domain: automation
+  input:
+    wecker_zeit:
+      name: Wecker Zeit
+      description: "Uhrzeit, zu der der Wecker starten soll"
+      selector:
+        time: {}
+
+    wecker_aktiv:
+      name: Wecker Aktiv-Schalter
+      description: "Input Boolean zum Aktivieren/Deaktivieren des Weckers"
+      selector:
+        entity:
+          domain: input_boolean
+
+    wecker_phase:
+      name: Wecker Phase-Flag
+      description: "Input Boolean – zeigt an, ob der Wecker gerade läuft. Wird vom Blueprint gesteuert."
+      selector:
+        entity:
+          domain: input_boolean
+
+    track_zaehler:
+      name: Track Zähler
+      description: "Input Number für aktuellen Sound-Index. Wird vom Blueprint gesteuert."
+      selector:
+        entity:
+          domain: input_number
+
+    licht:
+      name: Aufzuweckende Lichter
+      description: "Die Lichter, die morgens sanft angehen sollen"
+      selector:
+        target:
+          entity:
+            domain: light
+
+    speaker:
+      name: Smart Speaker (Media Player)
+      description: "Google Nest Audio oder anderer Cast-fähiger Player"
+      selector:
+        entity:
+          domain: media_player
+
+    bewegungsmelder:
+      name: Flur Bewegungsmelder
+      description: "Binary Sensor, der die Bewegung im Flur erkennt"
+      selector:
+        entity:
+          domain: binary_sensor
+
+    sounds:
+      name: Sound URLs (kommagetrennt)
+      description: "Liste der Wecker-Sounds. Kommagetrennt, ohne Leerzeichen. Beispiel: /local/sounds/wecker1.mp3,/local/sounds/wecker2.mp3"
+      default: "/local/sounds/wecker_1.mp3,/local/sounds/wecker_2.mp3,/local/sounds/wecker_3.mp3"
+      selector:
+        text:
+
+    helligkeit:
+      name: Helligkeit (%)
+      description: "Helligkeit der Lichter beim Aufwecken"
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    transition:
+      name: Aufdimmdauer (Sekunden)
+      description: "Wie lange sollen die Lichter sanft aufdimmen?"
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: "s"
+
+    next_track_delay:
+      name: Pause-Delay (Sekunden)
+      description: "Verzögerung bevor der nächste Track startet (nach Druck auf Pause-Taste)"
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          unit_of_measurement: "s"
+
+trigger:
+  # 1) Start: Uhrzeit erreicht
+  - id: start
+    platform: time
+    at: !input wecker_zeit
+
+  # 2) Next Track: Pause, Idle oder Off nach Playing
+  - id: naechster_paused
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "paused"
+  - id: naechster_idle
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "idle"
+  - id: naechster_off
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "off"
+
+  # 3) Stop: Bewegung im Flur
+  - id: stop
+    platform: state
+    entity_id: !input bewegungsmelder
+    to: "on"
+
+variables:
+  sounds_raw: !input sounds
+  sound_list: "{{ sounds_raw.replace(' ', '').split(',') | reject('equalto', '') | list }}"
+  anzahl_sounds: "{{ sound_list | length }}"
+  phase_entity: !input wecker_phase
+  track_entity: !input track_zaehler
+  speaker_entity: !input speaker
+  licht_target: !input licht
+
+action:
+  - choose:
+      # ═══════════════════════════════════════════════════════════
+      # FALL 1: WECKER STARTEN (Zeit-Trigger)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: start
+          - condition: state
+            entity_id: !input wecker_aktiv
+            state: "on"
+        sequence:
+          # Phase aktivieren
+          - service: input_boolean.turn_on
+            target:
+              entity_id: !input wecker_phase
+
+          # Track-Zähler zurücksetzen
+          - service: input_number.set_value
+            target:
+              entity_id: !input track_zaehler
+            data:
+              value: 0
+
+          # Lichter sanft aufdimmen
+          - service: light.turn_on
+            target: !input licht
+            data:
+              brightness_pct: !input helligkeit
+              transition: !input transition
+
+          # Ersten Sound abspielen
+          - service: media_player.play_media
+            target:
+              entity_id: !input speaker
+            data:
+              media_content_id: "{{ sound_list[0] }}"
+              media_content_type: audio/mp3
+
+      # ═══════════════════════════════════════════════════════════
+      # FALL 2: NÄCHSTER TRACK (Pause/Ende)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id:
+              - naechster_paused
+              - naechster_idle
+              - naechster_off
+          - condition: state
+            entity_id: !input wecker_phase
+            state: "on"
+        sequence:
+          # Kurze Pause, falls Nutzer die Taste gedrückt hat
+          - delay:
+              seconds: !input next_track_delay
+
+          # Zähler hochzählen (Loop)
+          - service: input_number.set_value
+            target:
+              entity_id: !input track_zaehler
+            data:
+              value: >
+                {% set t = states(track_entity) | int(0) %}
+                {% set n = anzahl_sounds | int(1) %}
+                {{ (t + 1) % n }}
+
+          # Nächsten Sound abspielen
+          - service: media_player.play_media
+            target:
+              entity_id: !input speaker
+            data:
+              media_content_id: >
+                {% set t = states(track_entity) | int(0) %}
+                {% set sl = sound_list %}
+                {{ sl[t] }}
+              media_content_type: audio/mp3
+
+      # ═══════════════════════════════════════════════════════════
+      # FALL 3: STOPPEN (Bewegung im Flur)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: stop
+          - condition: state
+            entity_id: !input wecker_phase
+            state: "on"
+        sequence:
+          # Wiedergabe stoppen
+          - service: media_player.media_stop
+            target:
+              entity_id: !input speaker
+
+          # Phase deaktivieren
+          - service: input_boolean.turn_off
+            target:
+              entity_id: !input wecker_phase
+
+          # Lichter ausdimmen
+          - service: light.turn_off
+            target: !input licht
+            data:
+              transition: 15
+
+mode: queued
+max: 10
