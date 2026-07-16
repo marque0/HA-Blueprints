@@ -1,0 +1,608 @@
+blueprint:
+  name: "James Wecker Pro v7 – Schlank & Fokussiert"
+  description: >
+    Der aufgeräumte Smart-Home-Wecker. Nur das, was du brauchst:
+    2 Szenen, 2 Lichter, 1 Sound, Sunrise, Lautstärke-Rampe, Auto-Stop.
+  domain: automation
+  input:
+    # ═══════════════════════════════════════════════════════════
+    # HELFER (Pflicht)
+    # ═══════════════════════════════════════════════════════════
+    wecker_aktiv:
+      name: Wecker Aktiv-Schalter
+      selector:
+        entity:
+          domain: input_boolean
+
+    wecker_phase:
+      name: Wecker Phase-Flag
+      selector:
+        entity:
+          domain: input_boolean
+
+    wecker_snooze:
+      name: Wecker Snooze-Flag
+      selector:
+        entity:
+          domain: input_boolean
+
+    track_zaehler:
+      name: Track Zähler
+      selector:
+        entity:
+          domain: input_number
+
+    # ═══════════════════════════════════════════════════════════
+    # WECKZEIT-SLOTS (2)
+    # ═══════════════════════════════════════════════════════════
+    slot1_aktiv:
+      name: "Slot 1 aktiv"
+      default: true
+      selector:
+        boolean: {}
+
+    slot1_zeit:
+      name: "Slot 1 – Weckzeit"
+      default: "06:30:00"
+      selector:
+        time: {}
+
+    slot1_tage:
+      name: "Slot 1 – Tage"
+      default:
+        - "mon"
+        - "tue"
+        - "wed"
+        - "thu"
+        - "fri"
+      selector:
+        select:
+          multiple: true
+          options:
+            - "mon"
+            - "tue"
+            - "wed"
+            - "thu"
+            - "fri"
+            - "sat"
+            - "sun"
+
+    slot1_sunrise_zeit:
+      name: "Slot 1 – Sunrise-Zeit"
+      description: "z.B. 06:15 für 15 Min Vorlauf vor 06:30"
+      default: "06:15:00"
+      selector:
+        time: {}
+
+    slot2_aktiv:
+      name: "Slot 2 aktiv"
+      default: false
+      selector:
+        boolean: {}
+
+    slot2_zeit:
+      name: "Slot 2 – Weckzeit"
+      default: "08:00:00"
+      selector:
+        time: {}
+
+    slot2_tage:
+      name: "Slot 2 – Tage"
+      default:
+        - "sat"
+        - "sun"
+      selector:
+        select:
+          multiple: true
+          options:
+            - "mon"
+            - "tue"
+            - "wed"
+            - "thu"
+            - "fri"
+            - "sat"
+            - "sun"
+
+    slot2_sunrise_zeit:
+      name: "Slot 2 – Sunrise-Zeit"
+      description: "z.B. 07:45 für 15 Min Vorlauf vor 08:00"
+      default: "07:45:00"
+      selector:
+        time: {}
+
+    # ═══════════════════════════════════════════════════════════
+    # SUNRISE
+    # ═══════════════════════════════════════════════════════════
+    sunrise_aktiv:
+      name: "Sunrise-Licht generell aktiv"
+      default: true
+      selector:
+        boolean: {}
+
+    sunrise_start_helligkeit:
+      name: "Sunrise Start-Helligkeit (%)"
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: "%"
+
+    # ═══════════════════════════════════════════════════════════
+    # SZENEN (2)
+    # ═══════════════════════════════════════════════════════════
+    szene1:
+      name: "Szene 1"
+      selector:
+        entity:
+          domain: scene
+
+    szene2:
+      name: "Szene 2"
+      selector:
+        entity:
+          domain: scene
+
+    # ═══════════════════════════════════════════════════════════
+    # LICHT (2)
+    # ═══════════════════════════════════════════════════════════
+    transition:
+      name: "Licht-Aufdimmdauer (Sekunden)"
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: "s"
+
+    licht1:
+      name: "Licht 1"
+      selector:
+        entity:
+          domain: light
+
+    licht1_helligkeit:
+      name: "Licht 1 – Helligkeit (%)"
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht1_kelvin:
+      name: "Licht 1 – Farbtemperatur (Kelvin)"
+      description: "Warm = 2000K, Neutral = 3500K, Kalt = 6500K"
+      default: 2700
+      selector:
+        number:
+          min: 1500
+          max: 6500
+          unit_of_measurement: "K"
+
+    licht2:
+      name: "Licht 2"
+      selector:
+        entity:
+          domain: light
+
+    licht2_helligkeit:
+      name: "Licht 2 – Helligkeit (%)"
+      default: 40
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht2_kelvin:
+      name: "Licht 2 – Farbtemperatur (Kelvin)"
+      default: 2200
+      selector:
+        number:
+          min: 1500
+          max: 6500
+          unit_of_measurement: "K"
+
+    # ═══════════════════════════════════════════════════════════
+    # SMART SPEAKER
+    # ═══════════════════════════════════════════════════════════
+    speaker:
+      name: Smart Speaker (Media Player)
+      selector:
+        entity:
+          domain: media_player
+
+    # ═══════════════════════════════════════════════════════════
+    # LAUTSTÄRKE-RAMPE
+    # ═══════════════════════════════════════════════════════════
+    lautstaerke_rampe_aktiv:
+      name: "Lautstärke-Rampe aktiv"
+      default: true
+      selector:
+        boolean: {}
+
+    lautstaerke_start:
+      name: "Start-Lautstärke (%)"
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    lautstaerke_ziel:
+      name: "Ziel-Lautstärke (%)"
+      default: 70
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    lautstaerke_rampe_dauer:
+      name: "Rampe-Dauer (Minuten)"
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: "min"
+
+    # ═══════════════════════════════════════════════════════════
+    # SOUND
+    # ═══════════════════════════════════════════════════════════
+    sound1:
+      name: "Sound 1"
+      default: "/local/sounds/wecker_1.mp3"
+      selector:
+        text: {}
+
+    # ═══════════════════════════════════════════════════════════
+    # AUTO-STOP & BEWEGUNGSMELDER
+    # ═══════════════════════════════════════════════════════════
+    auto_stop_aktiv:
+      name: "Auto-Stop aktiv"
+      default: true
+      selector:
+        boolean: {}
+
+    auto_stop_minuten:
+      name: "Auto-Stop nach (Minuten)"
+      default: 45
+      selector:
+        number:
+          min: 5
+          max: 120
+          unit_of_measurement: "min"
+
+    bewegungsmelder:
+      name: Flur Bewegungsmelder
+      selector:
+        entity:
+          domain: binary_sensor
+
+    bewegung_verzoegerung:
+      name: "Bewegungs-Verzögerung (Sekunden)"
+      description: "Wie lange muss der Melder aktiv bleiben vor Stopp?"
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 30
+          unit_of_measurement: "s"
+
+trigger:
+  - id: slot1
+    platform: time
+    at: !input slot1_zeit
+
+  - id: slot2
+    platform: time
+    at: !input slot2_zeit
+
+  - id: sunrise1
+    platform: time
+    at: !input slot1_sunrise_zeit
+
+  - id: sunrise2
+    platform: time
+    at: !input slot2_sunrise_zeit
+
+  - id: naechster_paused
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "paused"
+
+  - id: naechster_idle
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "idle"
+
+  - id: naechster_off
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "off"
+
+  - id: stop
+    platform: state
+    entity_id: !input bewegungsmelder
+    to: "on"
+
+variables:
+  s1_tage: !input slot1_tage
+  s2_tage: !input slot2_tage
+  s1_aktiv: !input slot1_aktiv
+  s2_aktiv: !input slot2_aktiv
+  heute: "{{ ['mon','tue','wed','thu','fri','sat','sun'][now().weekday()] }}"
+
+  l1: !input licht1
+  l2: !input licht2
+  l1_b: !input licht1_helligkeit
+  l2_b: !input licht2_helligkeit
+  l1_k: !input licht1_kelvin
+  l2_k: !input licht2_kelvin
+
+  sz1: !input szene1
+  sz2: !input szene2
+
+  licht_liste: >
+    {% set liste = [] %}
+    {% if l1 is not none and l1 != '' %}{% set liste = liste + [{'entity': l1, 'brightness': l1_b, 'kelvin': l1_k}] %}{% endif %}
+    {% if l2 is not none and l2 != '' %}{% set liste = liste + [{'entity': l2, 'brightness': l2_b, 'kelvin': l2_k}] %}{% endif %}
+    {{ liste }}
+
+  szene_liste: >
+    {% set liste = [] %}
+    {% if sz1 is not none and sz1 != '' %}{% set liste = liste + [sz1] %}{% endif %}
+    {% if sz2 is not none and sz2 != '' %}{% set liste = liste + [sz2] %}{% endif %}
+    {{ liste }}
+
+  snd1: !input sound1
+
+  track_entity: !input track_zaehler
+  speaker_entity: !input speaker
+
+action:
+  - choose:
+      # ═══════════════════════════════════════════════════════════
+      # FALL A: SUNRISE-LICHT (Vorlauf)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: state
+            entity_id: !input wecker_aktiv
+            state: "on"
+          - condition: template
+            value_template: "{{ sunrise_aktiv }}"
+          - condition: or
+            conditions:
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: sunrise1
+                  - condition: template
+                    value_template: "{{ s1_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s1_tage }}"
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: sunrise2
+                  - condition: template
+                    value_template: "{{ s2_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s2_tage }}"
+
+        sequence:
+          - repeat:
+              count: "{{ szene_liste | length }}"
+              sequence:
+                - service: scene.turn_on
+                  target:
+                    entity_id: "{{ szene_liste[repeat.index - 1] }}"
+
+          - repeat:
+              count: "{{ licht_liste | length }}"
+              sequence:
+                - service: light.turn_on
+                  target:
+                    entity_id: "{{ licht_liste[repeat.index - 1].entity }}"
+                  data:
+                    brightness_pct: !input sunrise_start_helligkeit
+                    color_temp_kelvin: "{{ licht_liste[repeat.index - 1].kelvin }}"
+                    transition: !input transition
+
+      # ═══════════════════════════════════════════════════════════
+      # FALL B: HAUPT-WECKER STARTEN
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: state
+            entity_id: !input wecker_aktiv
+            state: "on"
+          - condition: or
+            conditions:
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: slot1
+                  - condition: template
+                    value_template: "{{ s1_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s1_tage }}"
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: slot2
+                  - condition: template
+                    value_template: "{{ s2_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s2_tage }}"
+
+        sequence:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: !input wecker_phase
+          - service: input_boolean.turn_off
+            target:
+              entity_id: !input wecker_snooze
+          - service: input_number.set_value
+            target:
+              entity_id: !input track_zaehler
+            data:
+              value: 0
+
+          - if:
+              - condition: template
+                value_template: "{{ lautstaerke_rampe_aktiv }}"
+            then:
+              - service: media_player.volume_set
+                target:
+                  entity_id: !input speaker
+                data:
+                  volume_level: "{{ lautstaerke_start | float / 100 }}"
+
+          - repeat:
+              count: "{{ szene_liste | length }}"
+              sequence:
+                - service: scene.turn_on
+                  target:
+                    entity_id: "{{ szene_liste[repeat.index - 1] }}"
+
+          - repeat:
+              count: "{{ licht_liste | length }}"
+              sequence:
+                - service: light.turn_on
+                  target:
+                    entity_id: "{{ licht_liste[repeat.index - 1].entity }}"
+                  data:
+                    brightness_pct: "{{ licht_liste[repeat.index - 1].brightness }}"
+                    color_temp_kelvin: "{{ licht_liste[repeat.index - 1].kelvin }}"
+                    transition: !input transition
+
+          - if:
+              - condition: template
+                value_template: "{{ lautstaerke_rampe_aktiv }}"
+            then:
+              - repeat:
+                  count: "{{ lautstaerke_rampe_dauer }}"
+                  sequence:
+                    - delay:
+                        minutes: 1
+                    - service: media_player.volume_set
+                      target:
+                        entity_id: !input speaker
+                      data:
+                        volume_level: >
+                          {% set start = lautstaerke_start | float / 100 %}
+                          {% set ziel = lautstaerke_ziel | float / 100 %}
+                          {% set step = (ziel - start) / lautstaerke_rampe_dauer %}
+                          {{ start + (step * repeat.index) }}
+
+          - if:
+              - condition: template
+                value_template: "{{ snd1 is not none and snd1 != '' }}"
+            then:
+              - service: media_player.play_media
+                target:
+                  entity_id: !input speaker
+                data:
+                  media_content_id: "{{ snd1 }}"
+                  media_content_type: audio/mp3
+
+          - if:
+              - condition: template
+                value_template: "{{ auto_stop_aktiv }}"
+            then:
+              - delay:
+                  minutes: !input auto_stop_minuten
+              - if:
+                  - condition: state
+                    entity_id: !input wecker_phase
+                    state: "on"
+                then:
+                  - service: media_player.media_stop
+                    target:
+                      entity_id: !input speaker
+                  - service: input_boolean.turn_off
+                    target:
+                      entity_id: !input wecker_phase
+                  - repeat:
+                      count: "{{ licht_liste | length }}"
+                      sequence:
+                        - service: light.turn_off
+                          target:
+                            entity_id: "{{ licht_liste[repeat.index - 1].entity }}"
+                          data:
+                            transition: 15
+
+      # ═══════════════════════════════════════════════════════════
+      # FALL C: NÄCHSTER TRACK (Loop)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id:
+              - naechster_paused
+              - naechster_idle
+              - naechster_off
+          - condition: state
+            entity_id: !input wecker_phase
+            state: "on"
+
+        sequence:
+          - delay:
+              seconds: 2
+          - service: media_player.play_media
+            target:
+              entity_id: !input speaker
+            data:
+              media_content_id: "{{ snd1 }}"
+              media_content_type: audio/mp3
+
+      # ═══════════════════════════════════════════════════════════
+      # FALL D: STOPPEN (Bewegung im Flur)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: stop
+          - condition: state
+            entity_id: !input wecker_phase
+            state: "on"
+
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ bewegung_verzoegerung | int(0) > 0 }}"
+            then:
+              - wait_for_trigger:
+                  - platform: state
+                    entity_id: !input bewegungsmelder
+                    to: "off"
+                    for:
+                      seconds: !input bewegung_verzoegerung
+
+          - service: media_player.media_stop
+            target:
+              entity_id: !input speaker
+
+          - service: input_boolean.turn_off
+            target:
+              entity_id: !input wecker_phase
+
+          - service: input_boolean.turn_off
+            target:
+              entity_id: !input wecker_snooze
+
+          - repeat:
+              count: "{{ licht_liste | length }}"
+              sequence:
+                - service: light.turn_off
+                  target:
+                    entity_id: "{{ licht_liste[repeat.index - 1].entity }}"
+                  data:
+                    transition: 15
+
+mode: queued
+max: 10
