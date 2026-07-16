@@ -482,15 +482,22 @@ variables:
   urlaub_bis_ent: !input urlaub_bis
   urlaub_aktiv: >
     {% set toggle = urlaub_toggle_ent is not none and urlaub_toggle_ent != '' and states(urlaub_toggle_ent) == 'on' %}
-    {% set datum = urlaub_bis_ent is not none and urlaub_bis_ent != '' %}
-    {% set bis_heute = false %}
-    {% if datum %}
-      {% set bis = states(urlaub_bis_ent) %}
-      {% if bis not in ['unavailable', 'unknown', 'none', None, ''] %}
-        {% set bis_heute = now().strftime('%Y-%m-%d') <= bis[:10] %}
+    {% if not toggle %}
+      {{ false }}
+    {% else %}
+      {% set datum = urlaub_bis_ent is not none and urlaub_bis_ent != '' %}
+      {% if not datum %}
+        {{ true }}
+      {% else %}
+        {% set bis = states(urlaub_bis_ent) %}
+        {% if bis in ['unavailable', 'unknown', 'none', None, ''] %}
+          {{ true }}
+        {% else %}
+          {% set bis_heute = now().strftime('%Y-%m-%d') <= bis[:10] %}
+          {{ bis_heute }}
+        {% endif %}
       {% endif %}
     {% endif %}
-    {{ toggle or bis_heute }}
 
   # ── Feiertag via Workday Sensor ──
   workday_ent: !input workday_sensor
