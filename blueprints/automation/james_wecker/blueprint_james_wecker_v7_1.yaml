@@ -459,6 +459,24 @@ variables:
   s3_aktiv: !input slot3_aktiv
   heute: "{{ ['mon','tue','wed','thu','fri','sat','sun'][now().weekday()] }}"
 
+  # ── Sunrise-Variable ──
+  sunrise_aktiv: !input sunrise_aktiv
+
+  # ── Anwesenheits-Variable ──
+  anwesenheit_aktiv: !input anwesenheit_aktiv
+
+  # ── Lautstärke-Variablen ──
+  lautstaerke_rampe_aktiv: !input lautstaerke_rampe_aktiv
+  lautstaerke_start: !input lautstaerke_start
+  lautstaerke_ziel: !input lautstaerke_ziel
+  lautstaerke_rampe_dauer: !input lautstaerke_rampe_dauer
+
+  # ── Auto-Stop-Variable ──
+  auto_stop_aktiv: !input auto_stop_aktiv
+
+  # ── Bewegungsmelder-Verzögerung ──
+  bewegung_verzoegerung: !input bewegung_verzoegerung
+
   # ── Urlaubs-Check ──
   urlaub_toggle_ent: !input urlaub_toggle
   urlaub_bis_ent: !input urlaub_bis
