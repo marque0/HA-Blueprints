@@ -687,7 +687,7 @@ action:
                     {% if tts_nachricht is not none and tts_nachricht != '' %}
                       {{ tts_nachricht }}
                     {% else %}
-                      Guten Morgen James. Es ist {{ now().strftime('%H:%M') }} Uhr. Heute ist {{ ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][now().weekday()] }}.
+                      Guten Morgen Marc. Es ist {{ now().strftime('%H:%M') }} Uhr. Heute ist {{ ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][now().weekday()] }}.
                     {% endif %}
 
           # ── LAUTSTÄRKE-RAMPE (Startwert setzen) ──

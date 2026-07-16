@@ -782,7 +782,7 @@ action:
                     {% if msg is not none and msg != '' %}
                       {{ msg }}
                     {% else %}
-                      Guten Morgen James. Es ist {{ now().strftime('%H:%M') }} Uhr, {{ ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][now().weekday()] }}. {% if wetter_temp != 'unbekannt' %}Draußen haben wir {{ wetter_temp }} Grad.{% endif %}
+                      Guten Morgen Marc. Es ist {{ now().strftime('%H:%M') }} Uhr, {{ ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][now().weekday()] }}. {% if wetter_temp != 'unbekannt' %}Draußen haben wir {{ wetter_temp }} Grad.{% endif %}
                     {% endif %}
 
           # ── LAUTSTÄRKE (Schlaf-Erkennung) ──
