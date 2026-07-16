@@ -1,0 +1,556 @@
+blueprint:
+  name: "James Wecker Pro v2 - Multi-Zeit, Licht-Helligkeit & Sound-Auswahl"
+  description: >
+    Wecker-Automation mit:
+    - Bis zu 3 verschiedenen Weckzeiten für verschiedene Wochentage
+    - Bis zu 5 Lichtern mit individueller Helligkeit und sanftem Aufdimmen
+    - Bis zu 5 Sound-Dateien für den Loop (Pause-Taste = nächster Track)
+    - Stopp per Flur-Bewegungsmelder
+
+    BENÖTIGTE HELFER (vorher anlegen):
+      - input_boolean.wecker_aktiv   (Ein/Aus-Schalter)
+      - input_boolean.wecker_phase   (Phase-Flag, wird automatisch gesteuert)
+      - input_number.wecker_track    (Track-Zähler 0-10, wird automatisch gesteuert)
+
+    SOUNDS: Lege MP3s unter www/sounds/ ab (z.B. wecker1.mp3).
+    Im Blueprint dann einfach: /local/sounds/wecker1.mp3
+  domain: automation
+  input:
+    # ═══════════════════════════════════════════════════════════
+    # HELFER
+    # ═══════════════════════════════════════════════════════════
+    wecker_aktiv:
+      name: Wecker Aktiv-Schalter
+      description: "Input Boolean zum Aktivieren/Deaktivieren des Weckers"
+      selector:
+        entity:
+          domain: input_boolean
+
+    wecker_phase:
+      name: Wecker Phase-Flag
+      description: "Input Boolean – zeigt an, ob der Wecker gerade läuft. Wird vom Blueprint gesteuert."
+      selector:
+        entity:
+          domain: input_boolean
+
+    track_zaehler:
+      name: Track Zähler
+      description: "Input Number für aktuellen Sound-Index. Wird vom Blueprint gesteuert."
+      selector:
+        entity:
+          domain: input_number
+
+    # ═══════════════════════════════════════════════════════════
+    # WECKZEIT-SLOTS (max. 3)
+    # ═══════════════════════════════════════════════════════════
+    slot1_aktiv:
+      name: "Slot 1 aktiv"
+      default: true
+      selector:
+        boolean: {}
+
+    slot1_zeit:
+      name: "Slot 1 – Weckzeit"
+      default: "06:30:00"
+      selector:
+        time: {}
+
+    slot1_tage:
+      name: "Slot 1 – Tage"
+      description: "An welchen Tagen soll Slot 1 auslösen?"
+      default:
+        - "mon"
+        - "tue"
+        - "wed"
+        - "thu"
+        - "fri"
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Montag
+              value: "mon"
+            - label: Dienstag
+              value: "tue"
+            - label: Mittwoch
+              value: "wed"
+            - label: Donnerstag
+              value: "thu"
+            - label: Freitag
+              value: "fri"
+            - label: Samstag
+              value: "sat"
+            - label: Sonntag
+              value: "sun"
+
+    slot2_aktiv:
+      name: "Slot 2 aktiv"
+      default: false
+      selector:
+        boolean: {}
+
+    slot2_zeit:
+      name: "Slot 2 – Weckzeit"
+      default: "08:00:00"
+      selector:
+        time: {}
+
+    slot2_tage:
+      name: "Slot 2 – Tage"
+      description: "An welchen Tagen soll Slot 2 auslösen?"
+      default:
+        - "sat"
+        - "sun"
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Montag
+              value: "mon"
+            - label: Dienstag
+              value: "tue"
+            - label: Mittwoch
+              value: "wed"
+            - label: Donnerstag
+              value: "thu"
+            - label: Freitag
+              value: "fri"
+            - label: Samstag
+              value: "sat"
+            - label: Sonntag
+              value: "sun"
+
+    slot3_aktiv:
+      name: "Slot 3 aktiv"
+      default: false
+      selector:
+        boolean: {}
+
+    slot3_zeit:
+      name: "Slot 3 – Weckzeit"
+      default: "09:00:00"
+      selector:
+        time: {}
+
+    slot3_tage:
+      name: "Slot 3 – Tage"
+      description: "An welchen Tagen soll Slot 3 auslösen?"
+      default: []
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Montag
+              value: "mon"
+            - label: Dienstag
+              value: "tue"
+            - label: Mittwoch
+              value: "wed"
+            - label: Donnerstag
+              value: "thu"
+            - label: Freitag
+              value: "fri"
+            - label: Samstag
+              value: "sat"
+            - label: Sonntag
+              value: "sun"
+
+    # ═══════════════════════════════════════════════════════════
+    # LICHT-SLOTS (max. 5) – jedes mit eigener Helligkeit
+    # ═══════════════════════════════════════════════════════════
+    transition:
+      name: "Aufdimmdauer (Sekunden)"
+      description: "Wie lange sollen die Lichter sanft aufdimmen?"
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: "s"
+
+    licht1:
+      name: "Licht 1"
+      description: "Erstes Licht, das sanft angehen soll"
+      selector:
+        entity:
+          domain: light
+
+    licht1_helligkeit:
+      name: "Licht 1 – Helligkeit (%)"
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht2:
+      name: "Licht 2 (optional)"
+      selector:
+        entity:
+          domain: light
+
+    licht2_helligkeit:
+      name: "Licht 2 – Helligkeit (%)"
+      default: 40
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht3:
+      name: "Licht 3 (optional)"
+      selector:
+        entity:
+          domain: light
+
+    licht3_helligkeit:
+      name: "Licht 3 – Helligkeit (%)"
+      default: 40
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht4:
+      name: "Licht 4 (optional)"
+      selector:
+        entity:
+          domain: light
+
+    licht4_helligkeit:
+      name: "Licht 4 – Helligkeit (%)"
+      default: 40
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht5:
+      name: "Licht 5 (optional)"
+      selector:
+        entity:
+          domain: light
+
+    licht5_helligkeit:
+      name: "Licht 5 – Helligkeit (%)"
+      default: 40
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    # ═══════════════════════════════════════════════════════════
+    # SMART SPEAKER
+    # ═══════════════════════════════════════════════════════════
+    speaker:
+      name: Smart Speaker (Media Player)
+      description: "Google Nest Audio oder anderer Cast-fähiger Player"
+      selector:
+        entity:
+          domain: media_player
+
+    # ═══════════════════════════════════════════════════════════
+    # SOUND-SLOTS (max. 5) – jeder einzeln auswählbar
+    # ═══════════════════════════════════════════════════════════
+    sound1:
+      name: "Sound 1"
+      description: "z.B. /local/sounds/wecker1.mp3  (wird als erster gespielt)"
+      default: "/local/sounds/wecker_1.mp3"
+      selector:
+        text: {}
+
+    sound2:
+      name: "Sound 2 (optional)"
+      description: "z.B. /local/sounds/wecker2.mp3"
+      selector:
+        text: {}
+
+    sound3:
+      name: "Sound 3 (optional)"
+      description: "z.B. /local/sounds/wecker3.mp3"
+      selector:
+        text: {}
+
+    sound4:
+      name: "Sound 4 (optional)"
+      selector:
+        text: {}
+
+    sound5:
+      name: "Sound 5 (optional)"
+      selector:
+        text: {}
+
+    next_track_delay:
+      name: "Pause-Delay (Sekunden)"
+      description: "Verzögerung bevor der nächste Track startet (nach Druck auf Pause-Taste)"
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          unit_of_measurement: "s"
+
+    # ═══════════════════════════════════════════════════════════
+    # BEWEGUNGSMELDER
+    # ═══════════════════════════════════════════════════════════
+    bewegungsmelder:
+      name: Flur Bewegungsmelder
+      description: "Binary Sensor, der die Bewegung im Flur erkennt"
+      selector:
+        entity:
+          domain: binary_sensor
+
+trigger:
+  # ═══════════════════════════════════════════════════════════
+  # WECKZEIT-TRIGGER (3 Slots)
+  # ═══════════════════════════════════════════════════════════
+  - id: slot1
+    platform: time
+    at: !input slot1_zeit
+
+  - id: slot2
+    platform: time
+    at: !input slot2_zeit
+
+  - id: slot3
+    platform: time
+    at: !input slot3_zeit
+
+  # ═══════════════════════════════════════════════════════════
+  # NEXT TRACK: Pause / Idle / Off nach Playing
+  # ═══════════════════════════════════════════════════════════
+  - id: naechster_paused
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "paused"
+
+  - id: naechster_idle
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "idle"
+
+  - id: naechster_off
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "off"
+
+  # ═══════════════════════════════════════════════════════════
+  # STOPP: Bewegung im Flur
+  # ═══════════════════════════════════════════════════════════
+  - id: stop
+    platform: state
+    entity_id: !input bewegungsmelder
+    to: "on"
+
+variables:
+  # Weckzeit-Variablen
+  s1_tage: !input slot1_tage
+  s2_tage: !input slot2_tage
+  s3_tage: !input slot3_tage
+  s1_aktiv: !input slot1_aktiv
+  s2_aktiv: !input slot2_aktiv
+  s3_aktiv: !input slot3_aktiv
+  heute: "{{ ['mon','tue','wed','thu','fri','sat','sun'][now().weekday()] }}"
+
+  # Licht-Variablen
+  l1: !input licht1
+  l2: !input licht2
+  l3: !input licht3
+  l4: !input licht4
+  l5: !input licht5
+  l1_b: !input licht1_helligkeit
+  l2_b: !input licht2_helligkeit
+  l3_b: !input licht3_helligkeit
+  l4_b: !input licht4_helligkeit
+  l5_b: !input licht5_helligkeit
+
+  # Sound-Variablen
+  snd1: !input sound1
+  snd2: !input sound2
+  snd3: !input sound3
+  snd4: !input sound4
+  snd5: !input sound5
+
+  # Listen dynamisch aufbauen (nur gefüllte Slots)
+  licht_liste: >
+    {% set liste = [] %}
+    {% if l1 is not none and l1 != '' %}{% set liste = liste + [{'entity': l1, 'brightness': l1_b}] %}{% endif %}
+    {% if l2 is not none and l2 != '' %}{% set liste = liste + [{'entity': l2, 'brightness': l2_b}] %}{% endif %}
+    {% if l3 is not none and l3 != '' %}{% set liste = liste + [{'entity': l3, 'brightness': l3_b}] %}{% endif %}
+    {% if l4 is not none and l4 != '' %}{% set liste = liste + [{'entity': l4, 'brightness': l4_b}] %}{% endif %}
+    {% if l5 is not none and l5 != '' %}{% set liste = liste + [{'entity': l5, 'brightness': l5_b}] %}{% endif %}
+    {{ liste }}
+
+  sound_liste: >
+    {% set liste = [] %}
+    {% if snd1 is not none and snd1 != '' %}{% set liste = liste + [snd1] %}{% endif %}
+    {% if snd2 is not none and snd2 != '' %}{% set liste = liste + [snd2] %}{% endif %}
+    {% if snd3 is not none and snd3 != '' %}{% set liste = liste + [snd3] %}{% endif %}
+    {% if snd4 is not none and snd4 != '' %}{% set liste = liste + [snd4] %}{% endif %}
+    {% if snd5 is not none and snd5 != '' %}{% set liste = liste + [snd5] %}{% endif %}
+    {{ liste }}
+
+  anzahl_sounds: "{{ sound_liste | length }}"
+  track_entity: !input track_zaehler
+
+action:
+  - choose:
+      # ═══════════════════════════════════════════════════════════
+      # FALL 1: WECKER STARTEN (Zeit-Trigger)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          # Wecker muss global aktiv sein
+          - condition: state
+            entity_id: !input wecker_aktiv
+            state: "on"
+
+          # Einer der 3 Slots muss passen (passender Tag + aktiv)
+          - condition: or
+            conditions:
+              # Slot 1
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: slot1
+                  - condition: template
+                    value_template: "{{ s1_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s1_tage }}"
+              # Slot 2
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: slot2
+                  - condition: template
+                    value_template: "{{ s2_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s2_tage }}"
+              # Slot 3
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: slot3
+                  - condition: template
+                    value_template: "{{ s3_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s3_tage }}"
+
+        sequence:
+          # Phase aktivieren
+          - service: input_boolean.turn_on
+            target:
+              entity_id: !input wecker_phase
+
+          # Track-Zähler zurücksetzen
+          - service: input_number.set_value
+            target:
+              entity_id: !input track_zaehler
+            data:
+              value: 0
+
+          # Lichter sanft aufdimmen (Loop über alle konfigurierten Lichter)
+          - repeat:
+              count: "{{ licht_liste | length }}"
+              sequence:
+                - service: light.turn_on
+                  target:
+                    entity_id: "{{ licht_liste[repeat.index - 1].entity }}"
+                  data:
+                    brightness_pct: "{{ licht_liste[repeat.index - 1].brightness }}"
+                    transition: !input transition
+
+          # Ersten Sound abspielen (falls Sounds konfiguriert)
+          - if:
+              - condition: template
+                value_template: "{{ anzahl_sounds | int(0) > 0 }}"
+            then:
+              - service: media_player.play_media
+                target:
+                  entity_id: !input speaker
+                data:
+                  media_content_id: "{{ sound_liste[0] }}"
+                  media_content_type: audio/mp3
+
+      # ═══════════════════════════════════════════════════════════
+      # FALL 2: NÄCHSTER TRACK (Pause / Ende / Off)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id:
+              - naechster_paused
+              - naechster_idle
+              - naechster_off
+          - condition: state
+            entity_id: !input wecker_phase
+            state: "on"
+          # Nur wenn überhaupt Sounds konfiguriert sind
+          - condition: template
+            value_template: "{{ anzahl_sounds | int(0) > 0 }}"
+
+        sequence:
+          # Kurze Pause, falls Nutzer die Taste gedrückt hat
+          - delay:
+              seconds: !input next_track_delay
+
+          # Track-Zähler hochzählen (Loop)
+          - service: input_number.set_value
+            target:
+              entity_id: !input track_zaehler
+            data:
+              value: >
+                {% set t = states(track_entity) | int(0) %}
+                {% set n = anzahl_sounds | int(1) %}
+                {{ (t + 1) % n }}
+
+          # Nächsten Sound abspielen
+          - service: media_player.play_media
+            target:
+              entity_id: !input speaker
+            data:
+              media_content_id: >
+                {% set t = states(track_entity) | int(0) %}
+                {{ sound_liste[t] }}
+              media_content_type: audio/mp3
+
+      # ═══════════════════════════════════════════════════════════
+      # FALL 3: STOPPEN (Bewegung im Flur)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: stop
+          - condition: state
+            entity_id: !input wecker_phase
+            state: "on"
+
+        sequence:
+          # Wiedergabe stoppen
+          - service: media_player.media_stop
+            target:
+              entity_id: !input speaker
+
+          # Phase deaktivieren
+          - service: input_boolean.turn_off
+            target:
+              entity_id: !input wecker_phase
+
+          # Alle Lichter sanft ausdimmen
+          - repeat:
+              count: "{{ licht_liste | length }}"
+              sequence:
+                - service: light.turn_off
+                  target:
+                    entity_id: "{{ licht_liste[repeat.index - 1].entity }}"
+                  data:
+                    transition: 15
+
+mode: queued
+max: 10
