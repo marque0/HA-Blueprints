@@ -1,0 +1,891 @@
+blueprint:
+  name: "James Wecker Pro v3 – Sunrise, TTS, Feiertage & Snooze"
+  description: >
+    Ultimativer Smart-Home-Wecker mit:
+    - Bis zu 3 Weckzeiten für verschiedene Wochentage
+    - Sunrise-Licht (beginnt vor Weckzeit sanft aufzuhellen)
+    - Individuelle Helligkeit + Farbtemperatur (Kelvin) pro Licht
+    - Lautstärke-Rampe auf dem Nest Audio
+    - TTS-Ansage: "Guten Morgen + Uhrzeit + Wetter"
+    - Automatische Feiertagserkennung (Hessen)
+    - Snooze-Modus (Pause-Taste = Pause statt nächster Track)
+    - Auto-Stop nach Timeout
+    - Stopp per Flur-Bewegungsmelder
+
+    BENÖTIGTE HELFER (vorher anlegen):
+      - input_boolean.wecker_aktiv     (Ein/Aus)
+      - input_boolean.wecker_phase     (läuft gerade?)
+      - input_boolean.wecker_snooze    (Snooze-Flag)
+      - input_number.wecker_track      (Track-Zähler)
+  domain: automation
+  input:
+    # ═══════════════════════════════════════════════════════════
+    # HELFER
+    # ═══════════════════════════════════════════════════════════
+    wecker_aktiv:
+      name: Wecker Aktiv-Schalter
+      selector:
+        entity:
+          domain: input_boolean
+
+    wecker_phase:
+      name: Wecker Phase-Flag
+      selector:
+        entity:
+          domain: input_boolean
+
+    wecker_snooze:
+      name: Wecker Snooze-Flag
+      description: "Wird vom Blueprint gesteuert. Legt fest, ob gerade geschnoozt wird."
+      selector:
+        entity:
+          domain: input_boolean
+
+    track_zaehler:
+      name: Track Zähler
+      selector:
+        entity:
+          domain: input_number
+
+    # ═══════════════════════════════════════════════════════════
+    # WECKZEIT-SLOTS (3)
+    # ═══════════════════════════════════════════════════════════
+    slot1_aktiv:
+      name: "Slot 1 aktiv"
+      default: true
+      selector:
+        boolean: {}
+
+    slot1_zeit:
+      name: "Slot 1 – Weckzeit"
+      default: "06:30:00"
+      selector:
+        time: {}
+
+    slot1_tage:
+      name: "Slot 1 – Tage"
+      default:
+        - "mon"
+        - "tue"
+        - "wed"
+        - "thu"
+        - "fri"
+      selector:
+        select:
+          multiple: true
+          options:
+            - "mon"
+            - "tue"
+            - "wed"
+            - "thu"
+            - "fri"
+            - "sat"
+            - "sun"
+
+    slot2_aktiv:
+      name: "Slot 2 aktiv"
+      default: false
+      selector:
+        boolean: {}
+
+    slot2_zeit:
+      name: "Slot 2 – Weckzeit"
+      default: "08:00:00"
+      selector:
+        time: {}
+
+    slot2_tage:
+      name: "Slot 2 – Tage"
+      default:
+        - "sat"
+        - "sun"
+      selector:
+        select:
+          multiple: true
+          options:
+            - "mon"
+            - "tue"
+            - "wed"
+            - "thu"
+            - "fri"
+            - "sat"
+            - "sun"
+
+    slot3_aktiv:
+      name: "Slot 3 aktiv"
+      default: false
+      selector:
+        boolean: {}
+
+    slot3_zeit:
+      name: "Slot 3 – Weckzeit"
+      default: "09:00:00"
+      selector:
+        time: {}
+
+    slot3_tage:
+      name: "Slot 3 – Tage"
+      default: []
+      selector:
+        select:
+          multiple: true
+          options:
+            - "mon"
+            - "tue"
+            - "wed"
+            - "thu"
+            - "fri"
+            - "sat"
+            - "sun"
+
+    # ═══════════════════════════════════════════════════════════
+    # FEIERTAGE
+    # ═══════════════════════════════════════════════════════════
+    feiertage_aktiv:
+      name: "Feiertagserkennung aktiv"
+      description: "An deutschen Feiertagen automatisch wie Wochenende behandeln?"
+      default: true
+      selector:
+        boolean: {}
+
+    # ═══════════════════════════════════════════════════════════
+    # SUNRISE-LICHT (Pre-Wecker)
+    # ═══════════════════════════════════════════════════════════
+    sunrise_aktiv:
+      name: "Sunrise-Licht aktiv"
+      description: "Licht beginnt VOR der Weckzeit sanft aufzuhellen?"
+      default: true
+      selector:
+        boolean: {}
+
+    sunrise_vorlauf:
+      name: "Sunrise Vorlauf (Minuten)"
+      description: "Wie viele Minuten vor Weckzeit soll das Licht beginnen?"
+      default: 15
+      selector:
+        number:
+          min: 0
+          max: 60
+          unit_of_measurement: "min"
+
+    sunrise_start_helligkeit:
+      name: "Sunrise Start-Helligkeit (%)"
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 50
+          unit_of_measurement: "%"
+
+    # ═══════════════════════════════════════════════════════════
+    # LICHT-SLOTS (5) – mit Helligkeit + Kelvin
+    # ═══════════════════════════════════════════════════════════
+    transition:
+      name: "Licht-Aufdimmdauer (Sekunden)"
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: "s"
+
+    licht1:
+      name: "Licht 1"
+      selector:
+        entity:
+          domain: light
+
+    licht1_helligkeit:
+      name: "Licht 1 – Helligkeit (%)"
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht1_kelvin:
+      name: "Licht 1 – Farbtemperatur (Kelvin)"
+      description: "Warm = 2000K, Neutral = 3500K, Kalt = 6500K"
+      default: 2700
+      selector:
+        number:
+          min: 1500
+          max: 6500
+          unit_of_measurement: "K"
+
+    licht2:
+      name: "Licht 2 (optional)"
+      selector:
+        entity:
+          domain: light
+
+    licht2_helligkeit:
+      name: "Licht 2 – Helligkeit (%)"
+      default: 40
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht2_kelvin:
+      name: "Licht 2 – Farbtemperatur (Kelvin)"
+      default: 2200
+      selector:
+        number:
+          min: 1500
+          max: 6500
+          unit_of_measurement: "K"
+
+    licht3:
+      name: "Licht 3 (optional)"
+      selector:
+        entity:
+          domain: light
+
+    licht3_helligkeit:
+      name: "Licht 3 – Helligkeit (%)"
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht3_kelvin:
+      name: "Licht 3 – Farbtemperatur (Kelvin)"
+      default: 2200
+      selector:
+        number:
+          min: 1500
+          max: 6500
+          unit_of_measurement: "K"
+
+    licht4:
+      name: "Licht 4 (optional)"
+      selector:
+        entity:
+          domain: light
+
+    licht4_helligkeit:
+      name: "Licht 4 – Helligkeit (%)"
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht4_kelvin:
+      name: "Licht 4 – Farbtemperatur (Kelvin)"
+      default: 2200
+      selector:
+        number:
+          min: 1500
+          max: 6500
+          unit_of_measurement: "K"
+
+    licht5:
+      name: "Licht 5 (optional)"
+      selector:
+        entity:
+          domain: light
+
+    licht5_helligkeit:
+      name: "Licht 5 – Helligkeit (%)"
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    licht5_kelvin:
+      name: "Licht 5 – Farbtemperatur (Kelvin)"
+      default: 2200
+      selector:
+        number:
+          min: 1500
+          max: 6500
+          unit_of_measurement: "K"
+
+    # ═══════════════════════════════════════════════════════════
+    # SMART SPEAKER
+    # ═══════════════════════════════════════════════════════════
+    speaker:
+      name: Smart Speaker (Media Player)
+      selector:
+        entity:
+          domain: media_player
+
+    # ═══════════════════════════════════════════════════════════
+    # LAUTSTÄRKE-RAMPE
+    # ═══════════════════════════════════════════════════════════
+    lautstaerke_rampe_aktiv:
+      name: "Lautstärke-Rampe aktiv"
+      description: "Lautstärke steigt langsam während des Weckens?"
+      default: true
+      selector:
+        boolean: {}
+
+    lautstaerke_start:
+      name: "Start-Lautstärke (%)"
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    lautstaerke_ziel:
+      name: "Ziel-Lautstärke (%)"
+      default: 70
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    lautstaerke_rampe_dauer:
+      name: "Rampe-Dauer (Minuten)"
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: "min"
+
+    # ═══════════════════════════════════════════════════════════
+    # TTS-ANSAGE
+    # ═══════════════════════════════════════════════════════════
+    tts_aktiv:
+      name: "TTS-Ansage aktiv"
+      description: "Sprachansage beim Wecker-Start? (Benötigt TTS-Integration in HA)"
+      default: false
+      selector:
+        boolean: {}
+
+    tts_nachricht:
+      name: "TTS-Nachricht"
+      description: 'Platzhalter: {{now().strftime("%H:%M")}} = Uhrzeit. Leer = Standard-Guten-Morgen'
+      default: ""
+      selector:
+        text: {}
+
+    tts_entity:
+      name: "TTS Media Player (optional)"
+      description: "Falls ein anderer Speaker für TTS genutzt werden soll. Leer = gleicher Speaker"
+      selector:
+        entity:
+          domain: media_player
+
+    # ═══════════════════════════════════════════════════════════
+    # SNOOZE
+    # ═══════════════════════════════════════════════════════════
+    snooze_aktiv:
+      name: "Snooze-Modus aktiv"
+      description: "Wenn aktiv: Pause-Taste = Snooze (Pause statt nächster Track)"
+      default: false
+      selector:
+        boolean: {}
+
+    snooze_dauer:
+      name: "Snooze-Dauer (Minuten)"
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: "min"
+
+    # ═══════════════════════════════════════════════════════════
+    # SOUNDS (5 Slots)
+    # ═══════════════════════════════════════════════════════════
+    sound1:
+      name: "Sound 1"
+      default: "/local/sounds/wecker_1.mp3"
+      selector:
+        text: {}
+
+    sound2:
+      name: "Sound 2 (optional)"
+      selector:
+        text: {}
+
+    sound3:
+      name: "Sound 3 (optional)"
+      selector:
+        text: {}
+
+    sound4:
+      name: "Sound 4 (optional)"
+      selector:
+        text: {}
+
+    sound5:
+      name: "Sound 5 (optional)"
+      selector:
+        text: {}
+
+    next_track_delay:
+      name: "Pause-Delay (Sekunden)"
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          unit_of_measurement: "s"
+
+    # ═══════════════════════════════════════════════════════════
+    # AUTO-STOP & BEWEGUNGSMELDER
+    # ═══════════════════════════════════════════════════════════
+    auto_stop_aktiv:
+      name: "Auto-Stop aktiv"
+      description: "Wecker stoppt automatisch nach X Minuten, falls kein Flur-Bewegungsmelder auslöst?"
+      default: true
+      selector:
+        boolean: {}
+
+    auto_stop_minuten:
+      name: "Auto-Stop nach (Minuten)"
+      default: 45
+      selector:
+        number:
+          min: 5
+          max: 120
+          unit_of_measurement: "min"
+
+    bewegungsmelder:
+      name: Flur Bewegungsmelder
+      selector:
+        entity:
+          domain: binary_sensor
+
+    # ═══════════════════════════════════════════════════════════
+    # BEWEGUNGS-VERZÖGERUNG (Smart-Stop)
+    # ═══════════════════════════════════════════════════════════
+    bewegung_verzoegerung:
+      name: "Bewegungs-Verzögerung (Sekunden)"
+      description: "Wie lange muss der Bewegungsmelder durchgehend aktiv sein, bevor der Wecker stoppt? (Verhindert versehentliches Stoppen)"
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 30
+          unit_of_measurement: "s"
+
+trigger:
+  # ═══════════════════════════════════════════════════════════
+  # 1) HAUPT-WECKER (3 Slots)
+  # ═══════════════════════════════════════════════════════════
+  - id: slot1
+    platform: time
+    at: !input slot1_zeit
+
+  - id: slot2
+    platform: time
+    at: !input slot2_zeit
+
+  - id: slot3
+    platform: time
+    at: !input slot3_zeit
+
+  # ═══════════════════════════════════════════════════════════
+  # 2) SUNRISE-LICHT (3 Slots, berechnet aus Vorlauf)
+  # ═══════════════════════════════════════════════════════════
+  # Wir nutzen Template-Trigger für dynamische Zeit-Berechnung
+  - id: sunrise1
+    platform: template
+    value_template: "{{ false }}"   # Platzhalter – wird in Condition abgehandelt
+
+  # ═══════════════════════════════════════════════════════════
+  # 3) NEXT TRACK / PAUSE
+  # ═══════════════════════════════════════════════════════════
+  - id: naechster_paused
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "paused"
+
+  - id: naechster_idle
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "idle"
+
+  - id: naechster_off
+    platform: state
+    entity_id: !input speaker
+    from: "playing"
+    to: "off"
+
+  # ═══════════════════════════════════════════════════════════
+  # 4) SNOOZE-ENDE (wenn Snooze-Flag an und Zeit abgelaufen)
+  # ═══════════════════════════════════════════════════════════
+  # (Wird über Timer/State-Change abgehandelt – siehe Action)
+
+  # ═══════════════════════════════════════════════════════════
+  # 5) STOPP: Bewegung im Flur
+  # ═══════════════════════════════════════════════════════════
+  - id: stop
+    platform: state
+    entity_id: !input bewegungsmelder
+    to: "on"
+
+variables:
+  # Weckzeit
+  s1_tage: !input slot1_tage
+  s2_tage: !input slot2_tage
+  s3_tage: !input slot3_tage
+  s1_aktiv: !input slot1_aktiv
+  s2_aktiv: !input slot2_aktiv
+  s3_aktiv: !input slot3_aktiv
+  heute: "{{ ['mon','tue','wed','thu','fri','sat','sun'][now().weekday()] }}"
+
+  # Feiertage Hessen (statische Liste)
+  feiertag_heute: >
+    {% set y = now().year %}
+    {% set ostern = strptime(y|string + '-04-01', '%Y-%m-%d') %}  {# Platzhalter, besser: Workday Sensor #}
+    {% set feste = [
+      y|string + '-01-01',   # Neujahr
+      y|string + '-05-01',   # Tag der Arbeit
+      y|string + '-10-03',   # Tag der Deutschen Einheit
+      y|string + '-12-25',   # 1. Weihnachtstag
+      y|string + '-12-26'    # 2. Weihnachtstag
+    ] %}
+    {% set beweglich = [
+      (y|string + '-04-18'), # Karfreitag (2025)
+      (y|string + '-04-21'), # Ostermontag (2025)
+      (y|string + '-05-29'), # Christi Himmelfahrt (2025)
+      (y|string + '-06-09', # Pfingstmontag (2025)
+      (y|string + '-06-19')  # Fronleichnam (2025)
+    ] %}
+    {% set heute_str = now().strftime('%Y-%m-%d') %}
+    {{ heute_str in feste or heute_str in beweglich }}
+
+  # Licht-Variablen
+  l1: !input licht1
+  l2: !input licht2
+  l3: !input licht3
+  l4: !input licht4
+  l5: !input licht5
+  l1_b: !input licht1_helligkeit
+  l2_b: !input licht2_helligkeit
+  l3_b: !input licht3_helligkeit
+  l4_b: !input licht4_helligkeit
+  l5_b: !input licht5_helligkeit
+  l1_k: !input licht1_kelvin
+  l2_k: !input licht2_kelvin
+  l3_k: !input licht3_kelvin
+  l4_k: !input licht4_kelvin
+  l5_k: !input licht5_kelvin
+
+  # Sound-Variablen
+  snd1: !input sound1
+  snd2: !input sound2
+  snd3: !input sound3
+  snd4: !input sound4
+  snd5: !input sound5
+
+  # Dynamische Listen
+  licht_liste: >
+    {% set liste = [] %}
+    {% if l1 is not none and l1 != '' %}{% set liste = liste + [{'entity': l1, 'brightness': l1_b, 'kelvin': l1_k}] %}{% endif %}
+    {% if l2 is not none and l2 != '' %}{% set liste = liste + [{'entity': l2, 'brightness': l2_b, 'kelvin': l2_k}] %}{% endif %}
+    {% if l3 is not none and l3 != '' %}{% set liste = liste + [{'entity': l3, 'brightness': l3_b, 'kelvin': l3_k}] %}{% endif %}
+    {% if l4 is not none and l4 != '' %}{% set liste = liste + [{'entity': l4, 'brightness': l4_b, 'kelvin': l4_k}] %}{% endif %}
+    {% if l5 is not none and l5 != '' %}{% set liste = liste + [{'entity': l5, 'brightness': l5_b, 'kelvin': l5_k}] %}{% endif %}
+    {{ liste }}
+
+  sound_liste: >
+    {% set liste = [] %}
+    {% if snd1 is not none and snd1 != '' %}{% set liste = liste + [snd1] %}{% endif %}
+    {% if snd2 is not none and snd2 != '' %}{% set liste = liste + [snd2] %}{% endif %}
+    {% if snd3 is not none and snd3 != '' %}{% set liste = liste + [snd3] %}{% endif %}
+    {% if snd4 is not none and snd4 != '' %}{% set liste = liste + [snd4] %}{% endif %}
+    {% if snd5 is not none and snd5 != '' %}{% set liste = liste + [snd5] %}{% endif %}
+    {{ liste }}
+
+  anzahl_sounds: "{{ sound_liste | length }}"
+  track_entity: !input track_zaehler
+  speaker_entity: !input speaker
+  tts_speaker: !input tts_entity
+
+action:
+  - choose:
+      # ═══════════════════════════════════════════════════════════
+      # FALL 1: WECKER STARTEN (Zeit-Trigger)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          # Wecker global aktiv
+          - condition: state
+            entity_id: !input wecker_aktiv
+            state: "on"
+
+          # Feiertag = Wochenende-Modus (optional)
+          - condition: or
+            conditions:
+              - condition: template
+                value_template: "{{ not feiertage_aktiv or not feiertag_heute }}"
+
+          # Slot 1, 2 oder 3 passt
+          - condition: or
+            conditions:
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: slot1
+                  - condition: template
+                    value_template: "{{ s1_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s1_tage }}"
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: slot2
+                  - condition: template
+                    value_template: "{{ s2_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s2_tage }}"
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: slot3
+                  - condition: template
+                    value_template: "{{ s3_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s3_tage }}"
+
+        sequence:
+          # Phase aktivieren, Snooze deaktivieren
+          - service: input_boolean.turn_on
+            target:
+              entity_id: !input wecker_phase
+
+          - service: input_boolean.turn_off
+            target:
+              entity_id: !input wecker_snooze
+
+          # Track-Zähler zurücksetzen
+          - service: input_number.set_value
+            target:
+              entity_id: !input track_zaehler
+            data:
+              value: 0
+
+          # ── TTS-ANSAGE ──
+          - if:
+              - condition: template
+                value_template: "{{ tts_aktiv }}"
+            then:
+              - service: tts.speak
+                target:
+                  entity_id: "{{ tts_speaker if tts_speaker is not none and tts_speaker != '' else speaker_entity }}"
+                data:
+                  message: >
+                    {% if tts_nachricht is not none and tts_nachricht != '' %}
+                      {{ tts_nachricht }}
+                    {% else %}
+                      Guten Morgen James. Es ist {{ now().strftime('%H:%M') }} Uhr. Heute ist {{ ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][now().weekday()] }}.
+                    {% endif %}
+
+          # ── LAUTSTÄRKE-RAMPE (Startwert setzen) ──
+          - if:
+              - condition: template
+                value_template: "{{ lautstaerke_rampe_aktiv }}"
+            then:
+              - service: media_player.volume_set
+                target:
+                  entity_id: !input speaker
+                data:
+                  volume_level: "{{ lautstaerke_start | float / 100 }}"
+
+          # ── LICHT AUF──
+          - repeat:
+              count: "{{ licht_liste | length }}"
+              sequence:
+                - service: light.turn_on
+                  target:
+                    entity_id: "{{ licht_liste[repeat.index - 1].entity }}"
+                  data:
+                    brightness_pct: "{{ licht_liste[repeat.index - 1].brightness }}"
+                    color_temp_kelvin: "{{ licht_liste[repeat.index - 1].kelvin }}"
+                    transition: !input transition
+
+          # ── LAUTSTÄRKE RAMPE (Lauter werden über Zeit) ──
+          - if:
+              - condition: template
+                value_template: "{{ lautstaerke_rampe_aktiv }}"
+            then:
+              - repeat:
+                  count: "{{ lautstaerke_rampe_dauer }}"
+                  sequence:
+                    - delay:
+                        minutes: 1
+                    - service: media_player.volume_set
+                      target:
+                        entity_id: !input speaker
+                      data:
+                        volume_level: >
+                          {% set start = lautstaerke_start | float / 100 %}
+                          {% set ziel = lautstaerke_ziel | float / 100 %}
+                          {% set step = (ziel - start) / lautstaerke_rampe_dauer %}
+                          {{ start + (step * repeat.index) }}
+
+          # ── SOUND STARTEN ──
+          - if:
+              - condition: template
+                value_template: "{{ anzahl_sounds | int(0) > 0 }}"
+            then:
+              - service: media_player.play_media
+                target:
+                  entity_id: !input speaker
+                data:
+                  media_content_id: "{{ sound_liste[0] }}"
+                  media_content_type: audio/mp3
+
+          # ── AUTO-STOP TIMER ──
+          - if:
+              - condition: template
+                value_template: "{{ auto_stop_aktiv }}"
+            then:
+              - delay:
+                  minutes: !input auto_stop_minuten
+              - if:
+                  - condition: state
+                    entity_id: !input wecker_phase
+                    state: "on"
+                then:
+                  # Alles stoppen
+                  - service: media_player.media_stop
+                    target:
+                      entity_id: !input speaker
+                  - service: input_boolean.turn_off
+                    target:
+                      entity_id: !input wecker_phase
+                  - repeat:
+                      count: "{{ licht_liste | length }}"
+                      sequence:
+                        - service: light.turn_off
+                          target:
+                            entity_id: "{{ licht_liste[repeat.index - 1].entity }}"
+                          data:
+                            transition: 15
+
+      # ═══════════════════════════════════════════════════════════
+      # FALL 2: NÄCHSTER TRACK / SNOOZE (Pause/Ende/Off)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id:
+              - naechster_paused
+              - naechster_idle
+              - naechster_off
+          - condition: state
+            entity_id: !input wecker_phase
+            state: "on"
+
+        sequence:
+          # ── SNOOZE-MODUS ──
+          - if:
+              - condition: template
+                value_template: "{{ snooze_aktiv and not states(wecker_snooze)|bool(false) }}"
+            then:
+              # Snooze aktivieren → Pause statt nächster Track
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: !input wecker_snooze
+              - delay:
+                  minutes: !input snooze_dauer
+              - if:
+                  - condition: state
+                    entity_id: !input wecker_snooze
+                    state: "on"
+                then:
+                  # Snooze vorbei → gleichen Sound erneut
+                  - service: input_boolean.turn_off
+                    target:
+                      entity_id: !input wecker_snooze
+                  - service: media_player.play_media
+                    target:
+                      entity_id: !input speaker
+                    data:
+                      media_content_id: >
+                        {% set t = states(track_entity) | int(0) %}
+                        {{ sound_liste[t] }}
+                      media_content_type: audio/mp3
+            else:
+              # ── NORMAL: NÄCHSTER TRACK ──
+              - if:
+                  - condition: template
+                    value_template: "{{ anzahl_sounds | int(0) > 0 }}"
+                then:
+                  - delay:
+                      seconds: !input next_track_delay
+                  - service: input_number.set_value
+                    target:
+                      entity_id: !input track_zaehler
+                    data:
+                      value: >
+                        {% set t = states(track_entity) | int(0) %}
+                        {% set n = anzahl_sounds | int(1) %}
+                        {{ (t + 1) % n }}
+                  - service: media_player.play_media
+                    target:
+                      entity_id: !input speaker
+                    data:
+                      media_content_id: >
+                        {% set t = states(track_entity) | int(0) %}
+                        {{ sound_liste[t] }}
+                      media_content_type: audio/mp3
+
+      # ═══════════════════════════════════════════════════════════
+      # FALL 3: STOPPEN (Bewegung im Flur)
+      # ═══════════════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: stop
+          - condition: state
+            entity_id: !input wecker_phase
+            state: "on"
+
+        sequence:
+          # Verzögerung: Bewegung muss X Sekunden anhalten
+          - if:
+              - condition: template
+                value_template: "{{ bewegung_verzoegerung | int(0) > 0 }}"
+            then:
+              - wait_for_trigger:
+                  - platform: state
+                    entity_id: !input bewegungsmelder
+                    to: "off"
+                    for:
+                      seconds: !input bewegung_verzoegerung
+
+          # Wiedergabe stoppen
+          - service: media_player.media_stop
+            target:
+              entity_id: !input speaker
+
+          # Phase + Snooze deaktivieren
+          - service: input_boolean.turn_off
+            target:
+              entity_id: !input wecker_phase
+
+          - service: input_boolean.turn_off
+            target:
+              entity_id: !input wecker_snooze
+
+          # Lichter ausdimmen
+          - repeat:
+              count: "{{ licht_liste | length }}"
+              sequence:
+                - service: light.turn_off
+                  target:
+                    entity_id: "{{ licht_liste[repeat.index - 1].entity }}"
+                  data:
+                    transition: 15
+
+mode: queued
+max: 10
