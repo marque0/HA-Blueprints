@@ -124,7 +124,7 @@ action:
           - condition: trigger
             id: hdmi_action
           - condition: template
-            value_template: "{{ trigger.event.data.action | default('') | string | startswith('tv_hdmi_') }}"
+            value_template: "{{ (trigger.event.data.action | default('') | string)[:8] == 'tv_hdmi_' }}"
 
         sequence:
           - variables:
