@@ -110,6 +110,40 @@ blueprint:
       selector:
         time: {}
 
+    slot3_aktiv:
+      name: "Slot 3 aktiv"
+      default: false
+      selector:
+        boolean: {}
+
+    slot3_zeit:
+      name: "Slot 3 – Weckzeit"
+      default: "09:00:00"
+      selector:
+        time: {}
+
+    slot3_tage:
+      name: "Slot 3 – Tage"
+      default: []
+      selector:
+        select:
+          multiple: true
+          options:
+            - "mon"
+            - "tue"
+            - "wed"
+            - "thu"
+            - "fri"
+            - "sat"
+            - "sun"
+
+    slot3_sunrise_zeit:
+      name: "Slot 3 – Sunrise-Zeit"
+      description: "Leer lassen = kein Sunrise"
+      default: "00:00:00"
+      selector:
+        time: {}
+
     # ═══════════════════════════════════════════════════════════
     # SUNRISE
     # ═══════════════════════════════════════════════════════════
@@ -301,6 +335,10 @@ trigger:
     platform: time
     at: !input slot2_zeit
 
+  - id: slot3
+    platform: time
+    at: !input slot3_zeit
+
   - id: sunrise1
     platform: time
     at: !input slot1_sunrise_zeit
@@ -308,6 +346,10 @@ trigger:
   - id: sunrise2
     platform: time
     at: !input slot2_sunrise_zeit
+
+  - id: sunrise3
+    platform: time
+    at: !input slot3_sunrise_zeit
 
   - id: naechster_paused
     platform: state
@@ -335,8 +377,10 @@ trigger:
 variables:
   s1_tage: !input slot1_tage
   s2_tage: !input slot2_tage
+  s3_tage: !input slot3_tage
   s1_aktiv: !input slot1_aktiv
   s2_aktiv: !input slot2_aktiv
+  s3_aktiv: !input slot3_aktiv
   heute: "{{ ['mon','tue','wed','thu','fri','sat','sun'][now().weekday()] }}"
 
   l1: !input licht1
@@ -395,6 +439,14 @@ action:
                     value_template: "{{ s2_aktiv }}"
                   - condition: template
                     value_template: "{{ heute in s2_tage }}"
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: sunrise3
+                  - condition: template
+                    value_template: "{{ s3_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s3_tage }}"
 
         sequence:
           - repeat:
@@ -440,6 +492,14 @@ action:
                     value_template: "{{ s2_aktiv }}"
                   - condition: template
                     value_template: "{{ heute in s2_tage }}"
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: slot3
+                  - condition: template
+                    value_template: "{{ s3_aktiv }}"
+                  - condition: template
+                    value_template: "{{ heute in s3_tage }}"
 
         sequence:
           - service: input_boolean.turn_on
