@@ -2,9 +2,8 @@ blueprint:
   name: TV Sleep Timer
   description: >
     Schaltet den Fernseher nach einer einstellbaren Zeit automatisch aus.
-    Aktiviere den Timer über einen input_boolean Toggle, stelle die Minuten
-    im input_number Helper ein und starte das Script. Der Toggle schaltet
-    sich nach dem Ausschalten selbst zurück auf OFF.
+    Stelle die Wartezeit im input_number Helper ein und starte das Script
+    manuell – es läuft erst, wenn du es auslöst.
   domain: script
   input:
     tv_entity:
@@ -21,13 +20,6 @@ blueprint:
         entity:
           filter:
             - domain: input_number
-    timer_active:
-      name: Timer aktiv (Toggle)
-      description: Ein input_boolean Helper zum Ein- und Ausschalten des Timers.
-      selector:
-        entity:
-          filter:
-            - domain: input_boolean
   source_url: https://github.com/marque0/HA-Blueprints/blob/main/blueprints/script/tv_sleep_timer/blueprint_tv_sleep_timer.yaml
 
 mode: restart
@@ -35,15 +27,9 @@ mode: restart
 variables:
   minutes_helper: !input timer_minutes
   tv: !input tv_entity
-  toggle: !input timer_active
   minutes: "{{ states(minutes_helper) | float(0) }}"
 
 sequence:
-  - alias: "Toggle einschalten (Timer aktiv)"
-    service: input_boolean.turn_on
-    target:
-      entity_id: "{{ toggle }}"
-
   - alias: "Nur fortfahren, wenn Wartezeit > 0"
     condition:
       - condition: template
@@ -53,19 +39,7 @@ sequence:
     delay:
       minutes: "{{ minutes | int(0) }}"
 
-  - alias: "Prüfen, ob Timer noch aktiv ist"
-    condition:
-      - condition: state
-        entity_id: "{{ toggle }}"
-        state: "on"
-
   - alias: "Fernseher ausschalten"
     service: media_player.turn_off
     target:
       entity_id: "{{ tv }}"
-
-  - alias: "Toggle nach Ausschalten deaktivieren"
-    service: input_boolean.turn_off
-    target:
-      entity_id: "{{ toggle }}"
-
