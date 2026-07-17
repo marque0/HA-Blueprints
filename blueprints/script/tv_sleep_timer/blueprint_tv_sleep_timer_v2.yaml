@@ -20,7 +20,7 @@ blueprint:
         entity:
           filter:
             - domain: input_number
-  source_url: https://github.com/marque0/HA-Blueprints/blob/main/blueprints/script/tv_sleep_timer/blueprint_tv_sleep_timer.yaml
+  source_url: https://github.com/marque0/HA-Blueprints/blob/main/blueprints/script/tv_sleep_timer/blueprint_tv_sleep_timer_v2.yaml
 
 mode: restart
 
