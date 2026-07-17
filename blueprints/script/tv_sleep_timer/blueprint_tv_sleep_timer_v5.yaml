@@ -1,0 +1,97 @@
+blueprint:
+  name: TV Sleep Timer
+  description: >
+    Schaltet den Fernseher nach einer einstellbaren Zeit automatisch aus.
+    Stelle die Wartezeit ein, starte das Script manuell und schalte den
+    "Timer läuft"-Boolean auf OFF, um den Timer vorzeitig abzubrechen.
+    Optional kann ein zweites Script beim Start ausgeführt werden.
+  domain: script
+  input:
+    tv_entity:
+      name: Fernseher
+      description: Der TV / Media Player, der ausgeschaltet werden soll.
+      selector:
+        entity:
+          filter:
+            - domain: media_player
+    timer_minutes:
+      name: Wartezeit (Minuten)
+      description: Ein input_number Helper mit der Wartezeit in Minuten.
+      selector:
+        entity:
+          filter:
+            - domain: input_number
+    running_indicator:
+      name: Timer läuft (Boolean)
+      description: >
+        input_boolean, der anzeigt, ob der Timer aktiv ist.
+        Schalte auf OFF, um den Timer vorzeitig abzubrechen.
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+    optional_script:
+      name: Optionales Start-Script
+      description: >
+        Ein optionales Script, das beim Start des Timers ausgeführt wird
+        (z. B. für Benachrichtigungen oder Szenen).
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: script
+  source_url: https://github.com/marque0/HA-Blueprints/blob/main/blueprints/script/tv_sleep_timer/blueprint_tv_sleep_timer_v5.yaml
+
+mode: restart
+
+variables:
+  minutes_helper: !input timer_minutes
+  tv: !input tv_entity
+  running: !input running_indicator
+  opt_script: !input optional_script
+  minutes: "{{ states(minutes_helper) | float(0) }}"
+  total_iterations: "{{ (minutes * 60 / 10) | int(0) }}"
+
+sequence:
+  - alias: "Nur fortfahren, wenn Wartezeit > 0"
+    condition:
+      - condition: template
+        value_template: "{{ minutes > 0 }}"
+
+  - alias: "Timer-Status auf ON setzen"
+    service: input_boolean.turn_on
+    target:
+      entity_id: "{{ running }}"
+
+  - alias: "Optionales Start-Script ausführen"
+    choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ opt_script != '' }}"
+        sequence:
+          - service: script.turn_on
+            target:
+              entity_id: "{{ opt_script }}"
+
+  - alias: "Timer-Schleife mit Abbruch-Prüfung"
+    repeat:
+      while:
+        - condition: template
+          value_template: "{{ repeat.index <= total_iterations and is_state(running, 'on') }}"
+      sequence:
+        - delay: "00:00:10"
+
+  - alias: "Fernseher ausschalten (nur wenn nicht abgebrochen)"
+    choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ is_state(running, 'on') }}"
+        sequence:
+          - service: media_player.turn_off
+            target:
+              entity_id: "{{ tv }}"
+
+  - alias: "Timer-Status auf OFF setzen"
+    service: input_boolean.turn_off
+    target:
+      entity_id: "{{ running }}"
