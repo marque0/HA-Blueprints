@@ -1,0 +1,158 @@
+type: custom:button-card
+entity: input_boolean.tv_timer
+show_name: true
+show_label: true
+show_state: false
+show_icon: true
+name: TV Sleep Timer
+icon: mdi:timer-sand
+layout:
+  grid-template-areas: |
+    "i n control"
+    "i l control"
+  grid-template-columns: 48px 1fr auto
+  grid-template-rows: 1fr 1fr
+label: |
+  [[[
+    var min = states['input_number.warten_fur_tv_aus']
+              ? states['input_number.warten_fur_tv_aus'].state
+              : '0';
+    if (entity.state === 'on') return min + ' min • Timer läuft';
+    return min + ' min';
+  ]]]
+styles:
+  card:
+    - background: '#1e1e1e'
+    - border-radius: 16px
+    - padding: 12px 16px
+    - box-shadow: none
+    - font-family: Roboto, sans-serif
+  icon:
+    - width: 40px
+    - height: 40px
+    - background: 'rgba(144,164,174,0.2)'
+    - border-radius: 50%
+    - color: '#90a4ae'
+    - padding: 8px
+  name:
+    - color: white
+    - font-size: 16px
+    - font-weight: 500
+    - align-self: end
+    - justify-self: start
+    - padding-left: 12px
+  label:
+    - color: '#b0bec5'
+    - font-size: 14px
+    - align-self: start
+    - justify-self: start
+    - padding-left: 12px
+state:
+  - value: 'on'
+    tap_action:
+      action: call-service
+      service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.tv_timer
+    styles:
+      label:
+        - color: '#ef9a9a'
+  - value: 'off'
+    tap_action:
+      action: call-service
+      service: script.turn_on
+      target:
+        entity_id: script.tv_sleep_timer
+custom_fields:
+  control:
+    card:
+      type: custom:button-card
+      entity: input_boolean.tv_timer
+      show_name: false
+      show_icon: false
+      show_state: false
+      tap_action:
+        action: none
+      styles:
+        card:
+          - border-radius: 24px
+          - padding: 4px 12px
+          - height: 44px
+          - display: flex
+          - align-items: center
+          - justify-content: center
+          - box-shadow: none
+      state:
+        - value: 'on'
+          styles:
+            card:
+              - background-color: '#e53935'
+        - value: 'off'
+          styles:
+            card:
+              - background-color: '#43a047'
+      custom_fields:
+        minus:
+          card:
+            type: custom:button-card
+            icon: mdi:minus
+            tap_action:
+              action: call-service
+              service: input_number.decrement
+              target:
+                entity_id: input_number.warten_fur_tv_aus
+            show_name: false
+            styles:
+              card:
+                - background: none
+                - box-shadow: none
+                - padding: 0 4px
+                - width: 28px
+                - height: 28px
+              icon:
+                - color: white
+                - width: 20px
+        value:
+          card:
+            type: custom:button-card
+            entity: input_number.warten_fur_tv_aus
+            show_name: false
+            show_icon: false
+            show_state: true
+            show_label: false
+            tap_action:
+              action: none
+            styles:
+              card:
+                - background: none
+                - box-shadow: none
+                - padding: 0 6px
+              state:
+                - color: white
+                - font-size: 16px
+                - font-weight: 500
+        plus:
+          card:
+            type: custom:button-card
+            icon: mdi:plus
+            tap_action:
+              action: call-service
+              service: input_number.increment
+              target:
+                entity_id: input_number.warten_fur_tv_aus
+            show_name: false
+            styles:
+              card:
+                - background: none
+                - box-shadow: none
+                - padding: 0 4px
+                - width: 28px
+                - height: 28px
+              icon:
+                - color: white
+                - width: 20px
+      layout:
+        grid-template-areas: |
+          "minus value plus"
+        grid-template-columns: 28px auto 28px
+        grid-template-rows: 1fr
