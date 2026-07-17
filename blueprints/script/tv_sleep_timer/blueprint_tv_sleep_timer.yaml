@@ -1,0 +1,45 @@
+blueprint:
+  name: TV Sleep Timer
+  description: >
+    Warte eine einstellbare Zeit (in Minuten über einen input_number Helper)
+    und schalte dann den Fernseher aus. Lege vorher einen input_number
+    Helper an, stelle die Minuten ein und führe das Script aus.
+  domain: script
+  input:
+    tv_entity:
+      name: Fernseher
+      description: Der TV / Media Player, der ausgeschaltet werden soll.
+      selector:
+        entity:
+          filter:
+            - domain: media_player
+    timer_minutes:
+      name: Wartezeit (Minuten)
+      description: Ein input_number Helper mit der Wartezeit in Minuten.
+      selector:
+        entity:
+          filter:
+            - domain: input_number
+  source_url: https://github.com/marque0/HA-Blueprints/blob/main/blueprints/script/tv_sleep_timer/blueprint_tv_sleep_timer.yaml
+
+mode: restart
+
+variables:
+  minutes_helper: !input timer_minutes
+  tv: !input tv_entity
+  minutes: "{{ states(minutes_helper) | float(0) }}"
+
+sequence:
+  - condition:
+      - condition: template
+        value_template: "{{ minutes > 0 }}"
+    alias: "Nur fortfahren, wenn Wartezeit > 0"
+
+  - alias: "Warte die eingestellte Zeit"
+    delay:
+      minutes: "{{ minutes | int(0) }}"
+
+  - alias: "Fernseher ausschalten"
+    service: media_player.turn_off
+    target:
+      entity_id: "{{ tv }}"
